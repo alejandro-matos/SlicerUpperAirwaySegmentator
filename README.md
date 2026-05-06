@@ -38,6 +38,7 @@ To use the extension, load a dental CT or CBCT by either drag and dropping the d
 
 After loading the data, the data will be displayed in the 2D views.
 Switch module to the `UpperAirwaySegmentator` module and select the volume in the first drop down menu.
+Choose the trained AI model to use from the `AI model` drop down menu.
 
 Click on the `Apply` button to start the segmentation.
 
@@ -105,13 +106,31 @@ Navigate to your `UpperAirwaySegmentator` folder (this folder can be also found 
 
 <!-- <img src="https://github.com/alejandro-matos/SlicerUpperAirwaySegmentator/raw/main/Screenshots/8.png" width="500"/> -->
 
-Unzip the weight file in the `UpperAirwaySegmentator\Resources\ML` folder.
+Unzip the weight file in the model-specific folder under `UpperAirwaySegmentator\Resources\ML`.
+For example, the default model is stored in `UpperAirwaySegmentator\Resources\ML\upper_airway_155cbct`.
 
 Create a `download_info.json` file containing the path to the downloaded zip file for future reference : 
 
 {
   "download_url": "https://github.com/alejandro-matos/SlicerUpperAirwaySegmentator/releases/download/v1.0.0-alpha/Dataset014_Airways_155CBCT_fold_all.zip "
 }
+
+### Adding another trained model
+
+Selectable models are defined in `UpperAirwaySegmentator/UpperAirwaySegmentatorLib/ModelDefinition.py`.
+Add one `ModelDefinition` per trained model:
+
+```python
+ModelDefinition(
+    key="upper_airway_second_model",
+    display_name="Upper airway second model",
+    release_asset_name="DatasetXXX_YourSecondModel.zip",
+)
+```
+
+The `key` becomes the local weights folder name under `Resources/ML`.
+The `display_name` is shown in the Slicer module.
+Use `release_asset_name` when the weights are attached to a GitHub release, or `download_url` when you want to point directly to a `.zip` file.
 
 ### Failed to load segmentation
 

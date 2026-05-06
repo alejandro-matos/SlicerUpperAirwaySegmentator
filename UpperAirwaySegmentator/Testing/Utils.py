@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 import json
 import os
-from UpperAirwaySegmentatorLib import SegmentationWidget
+from UpperAirwaySegmentatorLib import MODEL_DEFINITIONS, SegmentationWidget
 
 import slicer
 
@@ -12,7 +12,7 @@ class UpperAirwaySegmentatorTestCase(unittest.TestCase):
         self._clearScene()
 
         # Get the path to the ML folder
-        ml_folder = Path(SegmentationWidget.nnUnetFolder())
+        ml_folder = Path(SegmentationWidget.nnUnetFolder(MODEL_DEFINITIONS[0].key))
         
         # Create the directory if it doesn't exist
         os.makedirs(ml_folder, exist_ok=True)
@@ -24,6 +24,9 @@ class UpperAirwaySegmentatorTestCase(unittest.TestCase):
         
         with open(ml_folder / "download_info.json", "w") as f:
             json.dump(download_info, f)
+
+        with open(ml_folder / "dataset.json", "w") as f:
+            json.dump({}, f)
 
     @staticmethod
     def _clearScene():

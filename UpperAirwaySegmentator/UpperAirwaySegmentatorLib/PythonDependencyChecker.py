@@ -13,11 +13,15 @@ class PythonDependencyChecker:
     Class responsible for installing the Modules dependencies
     """
 
-    def __init__(self, repoPath=None, destWeightFolder=None):
+    def __init__(self, repoPath=None, destWeightFolder=None, modelDefinition=None):
         from .SegmentationWidget import SegmentationWidget
         self.dependencyChecked = False
-        self.destWeightFolder = Path(destWeightFolder or SegmentationWidget.nnUnetFolder())
-        self.repo_path = repoPath or "alejandro-matos/SlicerUpperAirwaySegmentator"
+        self.modelDefinition = modelDefinition
+        modelFolder = modelDefinition.key if modelDefinition else None
+        self.destWeightFolder = Path(destWeightFolder or SegmentationWidget.nnUnetFolder(modelFolder))
+        self.repo_path = repoPath or (
+            modelDefinition.repo_path if modelDefinition else "alejandro-matos/SlicerUpperAirwaySegmentator"
+        )
 
     @classmethod
     def areDependenciesSatisfied(cls):
@@ -45,9 +49,18 @@ class PythonDependencyChecker:
         return self.getDatasetPath() is None
 
     def getLatestReleaseUrl(self):
+        if self.modelDefinition and self.modelDefinition.download_url:
+            return self.modelDefinition.download_url
+
         g = Github()
         repo = g.get_repo(self.repo_path)
         assets = [asset for release in repo.get_releases() for asset in release.get_assets()]
+        if self.modelDefinition and self.modelDefinition.release_asset_name:
+            for asset in assets:
+                if asset.name == self.modelDefinition.release_asset_name:
+                    return asset.browser_download_url
+            raise RuntimeError(f"Could not find release asset: {self.modelDefinition.release_asset_name}")
+
         return assets[0].browser_download_url
 
     def areWeightsOutdated(self):

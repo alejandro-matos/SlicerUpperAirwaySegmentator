@@ -9,6 +9,7 @@ import qt
 import slicer
 
 from .IconPath import icon, iconPath
+from .ModelDefinition import MODEL_DEFINITIONS
 from .PythonDependencyChecker import PythonDependencyChecker
 from .Utils import (
     createButton,
@@ -26,9 +27,10 @@ class ExportFormat(Flag):
 
 
 class SegmentationWidget(qt.QWidget):
-    def __init__(self, logic=None, parent=None):
+    def __init__(self, logic=None, parent=None, modelDefinitions=None):
         super().__init__(parent)
         self.logic = logic or self._createSlicerSegmentationLogic()
+        self.modelDefinitions = tuple(modelDefinitions or MODEL_DEFINITIONS)
         self._prevSegmentationNode = None
         voxel_size = 0.3*0.3*0.3  # mm³  for CBCTs
         max_voxels_to_remove = 200
@@ -41,6 +43,10 @@ class SegmentationWidget(qt.QWidget):
         self.inputSelector.removeEnabled = False
         self.inputSelector.setMRMLScene(slicer.mrmlScene)
         self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onInputChanged)
+
+        self.modelSelector = qt.QComboBox(self)
+        for modelDefinition in self.modelDefinitions:
+            self.modelSelector.addItem(modelDefinition.display_name)
 
         # Configure segment editor
         self.segmentationNodeSelector = slicer.qMRMLNodeComboBox(self)
@@ -95,6 +101,10 @@ class SegmentationWidget(qt.QWidget):
 
         layout = qt.QVBoxLayout(self)
         layout.addWidget(self.inputSelector)
+        modelSelectionLayout = qt.QFormLayout()
+        modelSelectionLayout.setContentsMargins(0, 0, 0, 0)
+        modelSelectionLayout.addRow("AI model", self.modelSelector)
+        layout.addLayout(modelSelectionLayout)
         layout.addWidget(self.segmentationNodeSelector)
         self.applyButton = createButton(
             "Apply",
@@ -147,7 +157,6 @@ class SegmentationWidget(qt.QWidget):
 
         self.isStopping = False
 
-        self._dependencyChecker = PythonDependencyChecker()
         self.processedVolumes = {}
 
         self.onInputChanged()
@@ -211,7 +220,8 @@ class SegmentationWidget(qt.QWidget):
             self._setApplyVisible(True)
             return
 
-        if not self._dependencyChecker.downloadWeightsIfNeeded(self.onProgressInfo):
+        dependencyChecker = PythonDependencyChecker(modelDefinition=self.getCurrentModelDefinition())
+        if not dependencyChecker.downloadWeightsIfNeeded(self.onProgressInfo):
             self._setApplyVisible(True)
             return
 
@@ -225,6 +235,7 @@ class SegmentationWidget(qt.QWidget):
         self.applyWidget.setVisible(isVisible)
         self.stopWidget.setVisible(not isVisible)
         self.inputSelector.setEnabled(isVisible)
+        self.modelSelector.setEnabled(isVisible)
         self.segmentationNodeSelector.setEnabled(isVisible)
 
     def _runSegmentation(self):
@@ -248,7 +259,7 @@ class SegmentationWidget(qt.QWidget):
                 return
 
         slicer.app.processEvents()
-        self.logic.setParameter(Parameter(folds="0", modelPath=self.nnUnetFolder()))
+        self.logic.setParameter(Parameter(folds="0", modelPath=self.nnUnetFolder(self.getCurrentModelDefinition().key)))
         self.logic.startSegmentation(self.getCurrentVolumeNode())
 
     def onInputChanged(self, *_):
@@ -317,6 +328,9 @@ class SegmentationWidget(qt.QWidget):
 
     def getCurrentSegmentationNode(self):
         return self.segmentationNodeSelector.currentNode()
+
+    def getCurrentModelDefinition(self):
+        return self.modelDefinitions[self.modelSelector.currentIndex()]
 
     def onInferenceFinished(self, *_):
         """
@@ -582,6 +596,9 @@ class SegmentationWidget(qt.QWidget):
         self.logic.inferenceFinished.connect(self.onInferenceFinished)
 
     @classmethod
-    def nnUnetFolder(cls):
+    def nnUnetFolder(cls, modelKey=None):
         fileDir = Path(__file__).parent
-        return fileDir.joinpath("..", "Resources", "ML").resolve()
+        mlFolder = fileDir.joinpath("..", "Resources", "ML")
+        if modelKey:
+            mlFolder = mlFolder.joinpath(modelKey)
+        return mlFolder.resolve()

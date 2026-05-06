@@ -20,6 +20,8 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(UpperAirwaySegmentator)
+add_subdirectory(UASeg)
+add_subdirectory(UpperAirwaySeg2)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
